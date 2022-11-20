@@ -2,6 +2,7 @@ import coreModule from 'grafana/app/core/core_module';
 import { get, chain } from 'lodash';
 import { LOADBALANCEFieldsDescriptor, templateQueryIdMap, namespace } from './query_def';
 import { GetServiceFromNamespace } from '../../common/constants';
+import { isTargetEqual } from '../../common/utils';
 
 export class QueryCtrl {
   /** @ngInject */
@@ -14,6 +15,7 @@ export class QueryCtrl {
       $scope.onRefresh();
     };
     $scope.onInstanceChange = (n, o) => {
+      if(isTargetEqual(n,o,'InstanceId')) return;
       $scope.target.listener = '';
       $scope.target.servers = '';
       $scope.target.serverPort = '';
@@ -21,7 +23,7 @@ export class QueryCtrl {
     $scope.getVariableId = (data, type) => {
       let variableData = data;
       const service = GetServiceFromNamespace(namespace);
-      // console.log({namespace, service});
+
       variableData = $scope.datasource.getServiceFn(service, 'getVariable')(variableData);
       if (!variableData) {
         return '';

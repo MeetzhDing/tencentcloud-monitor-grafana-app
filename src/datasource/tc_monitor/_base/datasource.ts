@@ -11,7 +11,8 @@ import {
 } from '../../common/constants';
 import instanceStorage from '../../common/datasourceStorage';
 import { MetricQuery } from './types';
-import { getNamesapceFromService } from '../../common/utils';
+import { getNamesapceFromService, getTimeShiftInMs } from '../../common/utils';
+import { Language, setLanguage } from '../../../locale';
 
 export interface TemplateQueryIdType {
   instance: string;
@@ -48,6 +49,7 @@ export abstract class BaseDatasource implements DatasourceInterface {
   4 通过这个dim和sourceMap获取维度值。即sourceMap[dim]
   */
   queryMonitorExtraConfg: Record<string, queryConfigType> = {};
+  CandiateDimensions?: Record<string, string> = {};
 
   InstanceReqConfig?: {
     service?: string;
@@ -58,7 +60,6 @@ export abstract class BaseDatasource implements DatasourceInterface {
       response?: (data: unknown) => unknown;
     };
   };
-
   InvalidDimensions?: Record<string, string>;
 
   abstract InstanceAliasList: string[];
@@ -71,6 +72,7 @@ export abstract class BaseDatasource implements DatasourceInterface {
     this.templateSrv = templateSrv;
     this.url = instanceSettings.url;
     this.secretId = (instanceSettings.jsonData || {}).secretId || '';
+    setLanguage(instanceSettings.jsonData.language || Language.Chinese);
   }
 
   get namespace() {
@@ -83,7 +85,7 @@ export abstract class BaseDatasource implements DatasourceInterface {
     let result = '';
     const alias = instance._InstanceAliasValue;
     this.extrasAlias?.forEach((extra) => {
-      const extraAlia = target[extra];
+      const extraAlia = this.getVariable(target[extra]);
       if (extraAlia && alias.indexOf(extraAlia) === -1) {
         result += ` - ${extraAlia}`;
       }
@@ -118,6 +120,12 @@ export abstract class BaseDatasource implements DatasourceInterface {
     if (!action || !namespace) {
       return [];
     }
+    // 支持payload里传入模板变量
+    if (_.isObject(payload)) {
+      _.forEach(payload, (value, key) => {
+        payload[key] = _.isString(value) ? this.getVariable(value) : value;
+      });
+    }
 
     // 查询地域列表
     const regionQuery = action.match(/^DescribeRegions$/i);
@@ -136,7 +144,6 @@ export abstract class BaseDatasource implements DatasourceInterface {
         const insAlias = this.formatVarDisplay(item, display, instancealias);
 
         item._InstanceAliasValue = insAlias; // FIXME:
-        // console.log(insAlias,item[this.templateQueryIdMap.instance]);
 
         if (!item[instancealias]) return [];
         return [
@@ -159,7 +166,6 @@ export abstract class BaseDatasource implements DatasourceInterface {
       try {
         // instance = JSON.parse(instance);
         const instanceCache = await instanceStorage.getInstance(this.service);
-        // console.log({ instanceCache });
 
         instance = _.cloneDeep(instanceCache.find((item) => item[this.templateQueryIdMap.instance] === instance)) ?? {};
         // eslint-disable-next-line no-empty
@@ -190,7 +196,6 @@ export abstract class BaseDatasource implements DatasourceInterface {
    * ]
    */
   async dimensionsFormat(dimKeys, ins, dimensionObject, target, service, options) {
-    console.log({ dimKeys });
     for (let key of dimKeys) {
       let keyTmp = key;
       const invalidDim = this.InvalidDimensions || this.getInvalidDimensions(this, target[service]);
@@ -199,7 +204,7 @@ export abstract class BaseDatasource implements DatasourceInterface {
         keyTmp = invalidDim[key];
         ins[key] = ins[keyTmp];
       }
-      // console.log('dimensionObject2', dimensionObject, {key, keyTmp}, invalidDim);
+
       let extraDimValue = this.getVariable(target[service][keyTmp]);
       if (this.queryMonitorExtraConfg[keyTmp]) {
         const {
@@ -215,7 +220,7 @@ export abstract class BaseDatasource implements DatasourceInterface {
         } catch (error) {
           if (_.isArray(extraIns)) extraIns = extraIns[0]; // 如果多个，取第一个。除了实例ID 暂不支持其他纬度多选
           const extraStorage = await instanceStorage.getExtraStorage(this.service, dim_KeyInStorage);
-          // console.log({ extraStorage });
+
           extraSourceMap =
             extraStorage?.find((item) => {
               if (_.isArray(item[dim_KeyInMap])) {
@@ -234,11 +239,15 @@ export abstract class BaseDatasource implements DatasourceInterface {
 
         extraDimValue = isStringOrNumber ? extraSourceMap : extraSourceMap?.[dim_KeyInIns || keyTmp];
       } else {
-        ins._InstanceAliasValue += this.getOtherAlias(ins, target);
+        ins._InstanceAliasValue += this.getOtherAlias(ins, target[service]);
+      }
+
+      if (getTimeShiftInMs(target[service].timeshift) > 0) {
+        ins._InstanceAliasValue += `_${target[service].timeshift}`
       }
       // 设置instance，针对额外的维度，需要注意模板变量的值
-      // ins[key] = (ins[keyTmp]) ?? this.getVariable(target[service][keyTmp]);
-      ins[key] = ins[keyTmp] ?? extraDimValue;
+      // ins[key] = ins[keyTmp] ?? extraDimValue;
+      ins[key] = this.getDimensionsVal(ins, keyTmp, extraDimValue);
       // cynosdb产品接口返回维度和入参不一致
       if (this.checkKeys.length > 0) {
         this.checkKeys.forEach((Ekey) => {
@@ -249,9 +258,15 @@ export abstract class BaseDatasource implements DatasourceInterface {
     }
     return dimensionObject;
   }
+  getDimensionsVal(ins: Record<string, any>, key: string, extraDimValue: string) {
+    let dimVal = ins[key];
+    if (_.isEmpty(dimVal) && this.CandiateDimensions[key]) {
+      dimVal = ins[this.CandiateDimensions[key]];
+    }
+    return dimVal ?? extraDimValue;
+  }
   query(options: any) {
     const service = this.service!; // 强制声明非空
-    // console.log('query');
 
     const queries = _.filter(options.targets, (item) => {
       // 过滤无效的查询 target
@@ -262,16 +277,32 @@ export abstract class BaseDatasource implements DatasourceInterface {
         !_.isEmpty(ReplaceVariable(this.templateSrv, options.scopedVars, item[service].region, false)) &&
         !_.isEmpty(ReplaceVariable(this.templateSrv, options.scopedVars, item[service].instance, true))
       );
-    }).map(async (target) => {
+    })
+    .reduce((prev, target) => {
+      if (getTimeShiftInMs(target[service].timeshift) > 0) {
+        const cloneTarget = _.cloneDeep(target)
+        cloneTarget[service].timeshift = ''
+        return [
+          ...prev,
+          cloneTarget,
+          target,
+        ]
+      }
+      return [...prev, target]
+    }, [])
+    .map(async (target) => {
       // 实例 instances 可能为模板变量，需先获取实际值
       // 针对JSON字符串和id的形式，分开做处理
       let instances = ReplaceVariable(this.templateSrv, options.scopedVars, target[service].instance, true);
       const instanceCache = await instanceStorage.getInstance(this.service);
-      // console.log({ instanceCache });
+      const timeshift = getTimeShiftInMs(target[service].timeshift)
+
       instances = [].concat(instances).map((inst) => {
         try {
           return JSON.parse(inst); // 兼容json字符串的 形式
         } catch (error) {
+          // 如果没拿到缓存，取默认实例组
+          if(!instanceCache) return this.getDefaultInsObj?.(inst);
           return _.cloneDeep(instanceCache.find((item) => item[this.templateQueryIdMap.instance] === inst)) ?? {};
         }
       });
@@ -282,18 +313,18 @@ export abstract class BaseDatasource implements DatasourceInterface {
         // 处理dimensions的值
         const dimKeys = Object.keys(dimensionObject);
         const dimResult = await this.dimensionsFormat(dimKeys, ins, dimensionObject, target, service, options);
-        // console.log({dimResult})
+
         insInReq.push([{ Dimensions: GetDimensions(dimResult) }]);
       }
       const data = {
-        StartTime: moment(options.range.from).format(),
-        EndTime: moment(options.range.to).format(),
+        StartTime: moment(options.range.from).subtract(timeshift).format(),
+        EndTime: moment(options.range.to).subtract(timeshift).format(),
         Period: target[service].period || 300,
         Instances: _.flatMap(insInReq),
         Namespace: target.namespace,
         MetricName: target[service].metricName,
       };
-      return this.getMonitorData(data, region, instances);
+      return this.getMonitorData(data, region, instances, timeshift);
     });
 
     if (queries.length === 0) {
@@ -307,6 +338,9 @@ export abstract class BaseDatasource implements DatasourceInterface {
       .catch((error) => {
         return [];
       });
+  }
+  getDefaultInsObj(ins: string) {
+    return {} as any;
   }
   getInstanceReqConfig(selfIns: any) {
     return {} as any;
@@ -331,7 +365,7 @@ export abstract class BaseDatasource implements DatasourceInterface {
    * @param region 地域信息
    * @param instances 实例列表，用于对返回结果的匹配解析
    */
-  getMonitorData(params, region, instances) {
+  getMonitorData(params, region, instances, timeshift = 0) {
     const serviceInfo = GetServiceAPIInfo(region, 'monitor');
     return this.doRequest(
       {
@@ -341,8 +375,7 @@ export abstract class BaseDatasource implements DatasourceInterface {
       serviceInfo.service,
       { action: 'GetMonitorData', region }
     ).then((response) => {
-      return ParseQueryResult(response, instances);
-      // return this.getOtherAlias(response,instances)
+      return ParseQueryResult(response, instances, timeshift);
     });
   }
 

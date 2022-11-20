@@ -67,14 +67,26 @@ function GetInstanceQueryParams(queries: any = {}) {
   return instanceQueryParamsBaseParse(queries, true);
 }
 const regionSupported = [
-  { text: '华北地区(北京)', value: 'ap-beijing' },
-  { text: '西南地区(成都)', value: 'ap-chengdu' },
-  { text: '华南地区(广州)', value: 'ap-guangzhou' },
-  { text: '港澳台地区(中国香港)', value: 'ap-hongkong' },
-  { text: '华东地区(上海)', value: 'ap-shanghai' },
-  { text: '华南地区(深圳金融)', value: 'ap-shenzhen-fsi' },
-  { text: '亚太东南(新加坡)', value: 'ap-singapore' },
-  { text: '欧洲地区(法兰克福)', value: 'eu-frankfurt' },
+  { value: 'ap-beijing' },
+  { value: 'ap-chengdu' },
+  { value: 'ap-chongqing' },
+  { value: 'ap-guangzhou' },
+  { value: 'ap-shenzhen-fsi' },
+  { value: 'ap-shanghai' },
+  { value: 'ap-shanghai-fsi' },
+  { value: 'ap-nanjing' },
+  { value: 'ap-hongkong' },
+  { value: 'ap-tokyo' },
+  { value: 'ap-seoul' },
+  { value: 'ap-singapore' },
+  { value: 'ap-bangkok' },
+  { value: 'ap-jakarta' },
+  { value: 'ap-mumbai' },
+  { value: 'eu-frankfurt' },
+  { value: 'eu-moscow' },
+  { value: 'na-ashburn' },
+  { value: 'na-siliconvalley' },
+  { value: 'na-toronto' },
 ];
 function modifyDimensons(metricItem) {
   const metricTmp = _.cloneDeep(metricItem);

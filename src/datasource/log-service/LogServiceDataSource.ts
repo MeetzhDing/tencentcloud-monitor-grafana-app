@@ -1,4 +1,4 @@
-import { MyDataSourceOptions, QueryInfo, VariableLogServiceQuery } from '../types';
+import { MyDataSourceOptions, QueryInfo } from '../types';
 import {
   DataFrame,
   DataQueryRequest,
@@ -38,7 +38,7 @@ export class LogServiceDataSource extends DataSourceApi<QueryInfo, MyDataSourceO
     const requestTargets = targets.map<QueryInfo>((target) => {
       const region = target.logServiceParams?.region ? getTemplateSrv().replace(target.logServiceParams.region) : '';
       const TopicId = target.logServiceParams?.TopicId ? getTemplateSrv().replace(target.logServiceParams.TopicId) : '';
-      const Query = replaceClsQueryWithTemplateSrv(target.logServiceParams.Query, scopedVars);
+      const Query = replaceClsQueryWithTemplateSrv(target.logServiceParams?.Query || '', scopedVars);
       return {
         ...target,
         logServiceParams: {
@@ -117,11 +117,14 @@ export class LogServiceDataSource extends DataSourceApi<QueryInfo, MyDataSourceO
     return output$;
   }
 
-  async metricFindQuery(query: VariableLogServiceQuery, options): Promise<MetricFindValue[]> {
-    const { logServiceParams } = query;
+  async metricFindQuery(query: QueryInfo['logServiceParams'], options): Promise<MetricFindValue[]> {
+    const logServiceParams = query;
     const region = logServiceParams?.region ? getTemplateSrv().replace(logServiceParams.region) : '';
     const TopicId = logServiceParams?.TopicId ? getTemplateSrv().replace(logServiceParams.TopicId) : '';
     const Query = replaceClsQueryWithTemplateSrv(logServiceParams.Query);
+    if (!options.range) {
+      return [];
+    }
     if (region && TopicId && Query) {
       const { analysisColumns, analysisRecords } = formatSearchLog(
         await SearchLog(
@@ -189,7 +192,7 @@ export class LogServiceDataSource extends DataSourceApi<QueryInfo, MyDataSourceO
   }
 
   /** histogram support
-   * @link https://github.com/grafana/grafana/blob/34f757ba5a970cc5fcffa92f47c5a0d41928f150/public/app/plugins/datasource/elasticsearch/datasource.ts#L569
+   * @link https://github.com/grafana/grafana/blob/942be4215afaea27757fb3a034126452aaf3fab2/public/app/plugins/datasource/loki/datasource.ts#L115-L115
    */
   getLogsVolumeDataProvider(request: DataQueryRequest<QueryInfo>): Observable<DataQueryResponse> | undefined {
     return undefined;
@@ -201,9 +204,7 @@ export class LogServiceDataSource extends DataSourceApi<QueryInfo, MyDataSourceO
     const metaField = row.dataFrame.fields.find((item) => item.name === LogFieldReservedName.META);
     try {
       if (metaField?.labels?.region && metaField?.labels.TopicId) {
-        const metaValue: Pick<LogInfo, 'Source' | 'FileName' | 'PkgId' | 'PkgLogId'> = JSON.parse(
-          metaField.values.get(row.rowIndex)
-        );
+        const metaValue: Pick<LogInfo, 'PkgId' | 'PkgLogId'> = JSON.parse(metaField.values.get(row.rowIndex));
         if (metaValue?.PkgId && metaValue?.PkgLogId) {
           return true;
         }
@@ -218,15 +219,13 @@ export class LogServiceDataSource extends DataSourceApi<QueryInfo, MyDataSourceO
     const { limit = 10, direction = 'BACKWARD' } = options;
     const timeField = row.dataFrame.fields.find((item) => item.name === LogFieldReservedName.TIMESTAMP);
     const metaField = row.dataFrame.fields.find((item) => item.name === LogFieldReservedName.META);
-    if (!timeField || !metaField?.labels) {
+    if (!timeField || !metaField?.labels || !limit) {
       return { data: [], state: LoadingState.Done };
     }
 
     try {
-      const metaValue: Pick<LogInfo, 'Source' | 'FileName' | 'PkgId' | 'PkgLogId'> = JSON.parse(
-        metaField.values.get(row.rowIndex)
-      );
-      const bTime = moment(timeField.values.get(row.rowIndex)).format('YYYY-MM-DD HH:MM:SS');
+      const metaValue: Pick<LogInfo, 'PkgId' | 'PkgLogId'> = JSON.parse(metaField.values.get(row.rowIndex));
+      const bTime = moment(timeField.values.get(row.rowIndex)).format('YYYY-MM-DD HH:MM:SS.SSS');
       const logContext = await DescribeLogContext(
         {
           TopicId: metaField?.labels.TopicId,

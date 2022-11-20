@@ -8,7 +8,7 @@ function getFieldsValue(value, fields) {
 }
 
 export async function fetchAllFactory(fetcher: (args: any) => Promise<any>, _params: any, field: string | string[]) {
-  const params = { ..._params };
+  const params = { ..._.omit(_params, ['isOffsetPage']) };
   params.Limit = params.Limit || PageSize; // 默认给个Limit大小为50
   params.Offset = params.Offset ?? 0; // 默认给个Offset为0
 
@@ -30,7 +30,7 @@ export async function fetchAllFactory(fetcher: (args: any) => Promise<any>, _par
   const delta = TotalCount - firstLists[0].length;
   const batchCount = Math.ceil(delta / PageSize);
   const pmList = new Array(batchCount).fill(0).map((_, index) => {
-    params.Offset = 1 + index; // 忽略offset为0的情况，从1开始
+    params.Offset = _params.isOffsetPage ? 1 + index : (1 + index) * params.Limit;
     return fetcher(params);
   });
 
@@ -120,4 +120,34 @@ export function serviceGroupBy(
     item.items.length === 1 ? { label: item.items[0].label, value: item.items[0].value } : item
   );
   return rs;
+}
+
+export const isTargetEqual = (newTargetString: string, oldTargetString: string, key: string) => {
+  try{
+    const newTarget = JSON.parse(newTargetString);
+    const oldTarget = JSON.parse(oldTargetString);
+    return newTarget[key] === oldTarget[key];
+  }catch(e){
+    return newTargetString === oldTargetString;
+  }
+}
+
+export const getTimeShiftInMs = (timeShift: any) => {
+  const parts = /^(\d+)([d|h|m|s])$/.exec(timeShift);
+  if (!parts) {
+    return 0;
+  }
+  const amount = parseInt(parts[1], 10);
+  const unit = parts[2];
+  switch (unit) {
+    case 'd':
+      return amount * 86400 * 1000;
+    case 'h':
+      return amount * 3600 * 1000;
+    case 'm':
+      return amount * 60 * 1000;
+    case 's':
+      return amount * 1000;
+  }
+  return 0;
 }

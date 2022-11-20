@@ -2,10 +2,14 @@
 
 set -eu
 
+# route validation
+npm run validate
+
 # build front end
 grafana-toolkit plugin:build
 
 # build back end
+go mod vendor
 mage -v
 
 # remove images not used in plugin.json

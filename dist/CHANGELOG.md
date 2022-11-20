@@ -1,4 +1,85 @@
-# TencentCloud Monitor Grafana App
+# TencentCloud Monitor Grafana App---
+
+## [2.7.5] - 2022-10-17
+### Modify
+- 更新CYNOSDB_MYSQL地域接口
+
+### Added
+- 增加CYNOSDB_MYSQL预设面板
+- 增加timeshift对比功能
+
+---
+
+## [2.7.4] - 2022-09-20
+### Fixed
+- adaptation CDB and CYNOSDB_MYSQL when has no cache
+
+### Modify
+- 优化log场景下的tag字段展示
+- cls 支持告警功能
+
+---
+
+## [2.7.3] - 2022-08-27
+### Fixed
+
+- bufix。
+
+---
+
+## [2.7.1] - 2022-07-27
+### Added
+
+- 增加英文版支持，可在创建数据源中切换。
+
+### Modify
+
+- 其他已知问题bug修复。
+
+See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
+
+---
+
+## [2.7.0] - 2022-06-07
+### Modify
+
+- 增加云监控-性能监控RUM产品。
+- GPU维度组合问题修复。
+- 全球应用加速产品名称修改。
+
+See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
+
+---
+
+## [2.6.4] - 2022-05-11
+### Modify
+
+- 模板变量query中payload支持引入其他模板变量。
+
+See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
+
+---
+
+## [2.6.3] - 2022-04-08
+### Fixed
+
+- Redis 支持节点和proxy维度 (#114)
+- CLB 的 vip 支持 ipv6 (#114)
+- 模板变量填写提示气泡，链接到 https://cloud.tencent.com/document/product/248/54510。(#114)
+- 插件端支持内网 API 设置 (#114)
+
+See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
+
+---
+
+## [2.6.2] - 2022-03-31
+### Fixed
+
+- README 更新 CLS 文档 (#111)
+- CLS 检索语句输入框样式优化 (#112)
+
+See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
+
 ---
 
 ## [2.6.1] - 2022-03-15
@@ -8,6 +89,8 @@
 - API 网关 代理路由匹配问题修复 (#109)
 
 See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
+
+---
 
 ## [2.6.0] - 2022-03-04
 ### Added
@@ -27,6 +110,8 @@ See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-m
 
 See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
 
+---
+
 ## [2.5.0] - 2022-02-15
 
 ### Added
@@ -41,6 +126,8 @@ See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-m
    - 分析场景无需输入字段使用定位，根据查询结果的数据类型进行自动推断。
 
 See detailed guide in [README.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/README.md) and [日志服务.md](https://github.com/TencentCloud/tencentcloud-monitor-grafana-app/blob/master/日志服务.md).
+
+---
 
 ## [2.4.1] - 2022-01-04
 

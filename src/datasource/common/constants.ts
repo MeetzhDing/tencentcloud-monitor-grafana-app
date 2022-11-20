@@ -4,6 +4,7 @@ import { SERVICES } from '../tc_monitor';
 import Sign from './sign';
 import SignV2 from './signV2';
 import { toDataQueryResponse } from '@grafana/runtime';
+import { getLanguage } from '../../locale';
 
 import packageInfo from '../plugin.json';
 export const TcDataSourceId = packageInfo.id;
@@ -229,6 +230,24 @@ const SERVICES_API_INFO = {
     version: '2019-11-12',
     path: '/gse',
     host: 'gse.tencentcloudapi.com',
+  },
+  lighthouse: {
+    service: 'lighthouse',
+    version: '2020-03-24',
+    path: '/lighthouse',
+    host: 'lighthouse.tencentcloudapi.com',
+  },
+  tsf: {
+    service: 'tsf',
+    version: '2018-03-26',
+    path: '/tsf',
+    host: 'tsf.tencentcloudapi.com',
+  },
+  rum: {
+    service: 'rum',
+    version: '2021-06-22',
+    path: '/rum',
+    host: 'rum.tencentcloudapi.com',
   },
   // 不单独定义lb，因为lb同样用的是vpc的配置，同上
   // lb: {
@@ -508,9 +527,9 @@ export function GetDimensions(obj) {
 }
 
 // parse query data result for panel
-export function ParseQueryResult(response, instances: any[] = []) {
+export function ParseQueryResult(response, instances: any[] = [], timeshift = 0) {
   const instanceList = _.cloneDeep(instances);
-  // console.log('parseQueryResult:', response, instances, instanceList);
+
   const dataPoints = _.get(response, 'DataPoints', []);
   return _.map(dataPoints, (dataPoint) => {
     let instanceAliasValue = _.get(dataPoint, 'Dimensions[0].Value');
@@ -523,17 +542,17 @@ export function ParseQueryResult(response, instances: any[] = []) {
     }
     return {
       target: `${response.MetricName} - ${instanceAliasValue}`,
-      datapoints: parseDataPoint(dataPoint),
+      datapoints: parseDataPoint(dataPoint, timeshift),
     };
   });
 }
 
 // parse tencent cloud monitor response data to grafana panel data
-function parseDataPoint(dataPoint) {
+function parseDataPoint(dataPoint, timeshift = 0) {
   const timestamps = _.get(dataPoint, 'Timestamps', []);
   const values = _.get(dataPoint, 'Values', []);
   const result = timestamps.map((timestamp, index) => {
-    return [values[index], timestamp * 1000];
+    return [values[index], timestamp * 1000 + timeshift];
   });
 
   return result;
@@ -544,7 +563,7 @@ function isInstanceMatch(instance, dimensions) {
   let match = true;
   // eslint-disable-next-line @typescript-eslint/prefer-for-of
   for (let i = 0; i < dimensions.length; i++) {
-    if (_.get(instance, dimensions[i].Name).toString() !== dimensions[i].Value.toString()) {
+    if (_.get(instance, dimensions[i].Name, '').toString() !== dimensions[i].Value.toString()) {
       match = false;
       break;
     }
@@ -583,7 +602,9 @@ export async function GetRequestParams(options, service, signObj: any = {}, secr
   };
   const sign = new Sign(signParams);
   const { intranet, ...headerSigned } = await sign.getHeader();
-  options.headers = Object.assign(options.headers || {}, { ...headerSigned });
+  // 传入x-tc-language实现国际化
+  // zh-CN en-US ko-KR ja-JP
+  options.headers = Object.assign(options.headers || {}, { ...headerSigned }, { 'x-tc-language': getLanguage() });
   options.method = 'POST';
   if (intranet) {
     options.url += '-internal';
@@ -653,3 +674,16 @@ export function parseDataFromBackendPlugin(res) {
 
 /** 当前环境是否为非生产环境 */
 export const IS_DEVELOPMENT_ENVIRONMENT = !(process.env.NODE_ENV === 'production');
+
+/**
+ * @link https://github.com/grafana/grafana/blob/3c6e0e8ef85048af952367751e478c08342e17b4/packages/grafana-data/src/types/app.ts#L12
+ */
+export enum CoreApp {
+  CloudAlerting = 'cloud-alerting',
+  UnifiedAlerting = 'unified-alerting',
+  Dashboard = 'dashboard',
+  Explore = 'explore',
+  Unknown = 'unknown',
+  PanelEditor = 'panel-editor',
+  PanelViewer = 'panel-viewer',
+}

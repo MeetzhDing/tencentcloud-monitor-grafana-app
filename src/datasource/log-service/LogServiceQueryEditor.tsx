@@ -2,9 +2,10 @@ import { DataSourceApi, QueryEditorProps } from '@grafana/data';
 import { defaultQueryInfo, MyDataSourceOptions, QueryInfo, queryInfoRuntime } from '../types';
 import React, { FC, useCallback } from 'react';
 import { useLatest } from 'react-use';
-import { InlineField, QueryField } from '@grafana/ui';
+import { InlineLabel, QueryField } from '@grafana/ui';
 import { TopicSelector } from './components/TopicSelector';
 import { TcDataSourceId } from '../common/constants';
+import { t } from '../../locale';
 import _ from 'lodash';
 import './index.less';
 
@@ -38,24 +39,27 @@ export const LogServiceQueryEditor: FC<Props> = React.memo((props: Props) => {
         }}
         datasource={datasource}
       />
-      <InlineField label="检索语句" labelWidth={20} grow>
-        <QueryField
-          portalOrigin={TcDataSourceId}
-          placeholder={`e.g. _SOURCE__: 127.0.0.1 AND "http/1.0"`}
-          query={logServiceParams.Query}
-          onChange={(v) => {
-            partialOnChange({
-              logServiceParams: {
-                ...(propsRef.current?.query?.logServiceParams || ({} as any)),
-                Query: v,
-              },
-            });
-          }}
-          // By default QueryField calls onChange if onBlur is not defined, this will trigger a rerender
-          // And slate will claim the focus, making it impossible to leave the field.
-          onBlur={() => {}}
-        />
-      </InlineField>
+      <div style={{ display: 'flex' }}>
+        <InlineLabel width={20}>{t('search_statement')}</InlineLabel>
+        <div style={{ flexGrow: 1 }}>
+          <QueryField
+            portalOrigin={TcDataSourceId}
+            placeholder={`e.g. _SOURCE__: 127.0.0.1 AND "http/1.0"`}
+            query={logServiceParams.Query}
+            onChange={(v) => {
+              partialOnChange({
+                logServiceParams: {
+                  ...(propsRef.current?.query?.logServiceParams || ({} as any)),
+                  Query: v,
+                },
+              });
+            }}
+            // By default QueryField calls onChange if onBlur is not defined, this will trigger a rerender
+            // And slate will claim the focus, making it impossible to leave the field.
+            onBlur={() => {}}
+          />
+        </div>
+      </div>
     </div>
   );
 });

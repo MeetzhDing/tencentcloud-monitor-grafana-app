@@ -3,24 +3,15 @@
   "name": "Tencent Cloud Monitoring",
   "id": "tencentcloud-monitor-datasource",
   "backend": true,
+  "alerting": true,
   "logs": true,
   "metrics": true,
-  "annotations": true,
+  "annotations": false,
   "executable": "tencentcloud-monitor-app-backend",
   "queryOptions": {
     "maxDataPoints": true
   },
   "routes": [
-    {
-      "path": "cls",
-      "url": "https://cls.tencentcloudapi.com",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "content": "application/json"
-        }
-      ]
-    },
     {
       "path": "cls-internal",
       "url": "https://cls.internal.tencentcloudapi.com",
@@ -1154,6 +1145,36 @@
     {
       "path": "cls",
       "url": "https://cls.tencentcloudapi.com",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "content": "application/json"
+        }
+      ]
+    },
+    {
+      "path": "lighthouse",
+      "url": "https://lighthouse.tencentcloudapi.com",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "content": "application/json"
+        }
+      ]
+    },
+    {
+      "path": "tsf",
+      "url": "https://tsf.tencentcloudapi.com",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "content": "application/json"
+        }
+      ]
+    },
+    {
+      "path": "rum",
+      "url": "https://rum.tencentcloudapi.com",
       "headers": [
         {
           "name": "Content-Type",
